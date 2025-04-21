@@ -88,6 +88,8 @@ nav:
     - Scaling and Performance Engineering:
       - Managing 10K+ Concurrent Connections in Go: 02-networking/10k-connections.md
       - GOMAXPROCS, epoll/kqueue, and Scheduler-Level Tuning: 02-networking/a-bit-more-tuning.md
+    - Diagnostics and Resilience:
+      - Building Resilient Connection Handling: 02-networking/resilient-connection-handling.md
 
 markdown_extensions:
   - toc:
@@ -115,9 +117,7 @@ plugins:
   - search
   - blog
   - glightbox
-  - git-revision-date-localized:
-      enable_creation_date: true
-      type: timeago
+  - git-revision-date-localized
   - include-markdown
   - rss:
       match_path: "(blog|01-common-patterns|02-networking)/.*"

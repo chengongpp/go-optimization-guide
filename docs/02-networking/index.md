@@ -38,11 +38,7 @@ A 15-part guide to building scalable, efficient, and resilient networked applica
 
 ## Diagnostics and Resilience
 
-- Diagnosing Bottlenecks with pprof, trace, and Custom Metrics
-
-	A hands-on guide to profiling networked Go services. Walk through flamegraph analysis with `pprof`, scheduling traces with `go tool trace`, and integrating Prometheus or OpenTelemetry metrics to isolate latency, I/O stalls, and memory churn.
-
-- Building Resilient Connection Handling with Load Shedding and Backpressure
+- [Building Resilient Connection Handling with Load Shedding and Backpressure](resilient-connection-handling.md)
 
 	Learn how to prevent overloads from crashing your system. Covers circuit breakers, passive vs active load shedding, backpressure strategies using channel buffering and timeouts, and how to reject or degrade requests gracefully under pressure.
 
