@@ -13,8 +13,8 @@ type Data struct {
 // BenchmarkWithoutPooling measures the performance of direct heap allocations.
 func BenchmarkWithoutPooling(b *testing.B) {
 	for b.Loop() {
-    data := &Data{}      // Allocating a new object each time
-		data.Values[0] = 42 // Simulating some memory activity
+		data := &Data{}      // Allocating a new object each time
+		data.Values[0] = 42  // Simulating some memory activity
 	}
 }
 
