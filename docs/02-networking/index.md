@@ -42,7 +42,7 @@ A 15-part guide to building scalable, efficient, and resilient networked applica
 
 	Learn how to prevent overloads from crashing your system. Covers circuit breakers, passive vs active load shedding, backpressure strategies using channel buffering and timeouts, and how to reject or degrade requests gracefully under pressure.
 
-- Memory Management and Leak Prevention in Long-Lived Connections
+- [Memory Management and Leak Prevention in Long-Lived Connections](long-lived-connections.md)
 
 	Long-lived connections like WebSockets or TCP streams can slowly leak memory or accumulate goroutines. This post shows how to identify common leaks, enforce read/write deadlines, manage backpressure, and trace heap growth with memory profiles.
 

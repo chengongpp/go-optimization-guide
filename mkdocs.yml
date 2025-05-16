@@ -90,6 +90,7 @@ nav:
       - GOMAXPROCS, epoll/kqueue, and Scheduler-Level Tuning: 02-networking/a-bit-more-tuning.md
     - Diagnostics and Resilience:
       - Building Resilient Connection Handling: 02-networking/resilient-connection-handling.md
+      - Memory Management and Leak Prevention in Long-Lived Connections: 02-networking/long-lived-connections.md
 
 markdown_extensions:
   - toc:
