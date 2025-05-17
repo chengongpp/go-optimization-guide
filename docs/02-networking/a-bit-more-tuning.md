@@ -60,9 +60,9 @@ The first line reports global scheduler state including whether garbage collecti
 
 Each P line details the logical processor's scheduler activity, including the number of times it's scheduled (schedtick), system call activity (syscalltick), timers, and free goroutine slots.
 
-The M lines represent OS threads, showing which goroutine (if any) is running, memory allocation status, lock states, and whether the thread is idle, spinning, or blocked.
+The M lines correspond to OS threads. Each line shows which goroutine—if any—is running on that thread, whether the thread is idle, spinning, or blocked, along with memory allocation activity and lock states.
 
-This structure helps pinpoint not just concurrency bottlenecks but also scheduler inefficiencies, syscall stalls, or underutilized cores. The output reflects:
+This view makes it easier to spot not only classic concurrency bottlenecks but also deeper issues: scheduler delays, blocking syscalls, threads that spin without doing useful work, or CPU cores that sit idle when they shouldn’t. The output reveals patterns that aren’t visible from logs or metrics alone.
 
 - `gomaxprocs=14`: Number of logical processors (P’s).
 - `idleprocs=14`: All processors are idle, indicating no runnable goroutines.
@@ -137,9 +137,11 @@ As with all low-level tuning, it's not about changing knobs blindly. It's about 
 
 ## Thread Pinning with `LockOSThread` and `GODEBUG` Flags
 
-While Go provides mechanisms like `runtime.LockOSThread()` for explicitly pinning goroutines to OS threads, practical benchmarks reveal this rarely provides significant benefits and often introduces complexity without corresponding improvements. Pinning can reduce thread migration and scheduling jitter in extremely latency-sensitive scenarios or real-time contexts. However, measurements consistently show that Go's scheduler efficiently manages workloads without explicit thread pinning, especially for CPU-bound tasks and typical server applications.
+Go offers tools like `runtime.LockOSThread()` to pin a goroutine to a specific OS thread, but in most real-world applications, the payoff is minimal. Benchmarks consistently show that for typical server workloads—especially those that are CPU-bound—Go’s scheduler handles thread placement well without manual intervention. Introducing thread pinning tends to add complexity without delivering measurable gains.
 
-If considering thread pinning, thorough benchmarking is mandatory. For instance, using `GODEBUG` flags (`schedtrace`, `scheddetail`) allows deep introspection of scheduler behavior, revealing situations where pinning might alleviate subtle scheduler contention or latency spikes. Nonetheless, benchmarks indicate such cases are uncommon. The overhead and rigidity introduced by thread pinning usually outweigh benefits, except in highly specialized real-time scenarios on isolated hardware with precise scheduling guarantees.
+There are exceptions. In ultra-low-latency or real-time systems, pinning can help reduce jitter by avoiding thread migration. But these gains typically require isolated CPU cores, tightly controlled environments, and strict latency targets. In practice, that means bare metal. On shared infrastructure—especially in cloud environments like AWS where cores are virtualized and noisy neighbors are common—thread pinning rarely delivers any measurable benefit.
+
+If you’re exploring pinning, it’s not enough to assume benefit—you need to benchmark it. Enabling `GODEBUG=schedtrace=1000,scheddetail=1` gives detailed insight into how goroutines are scheduled and whether contention or migration is actually a problem. Without that evidence, thread pinning is more likely to hinder than help.
 
 Here's how developers might pin threads cautiously:
 

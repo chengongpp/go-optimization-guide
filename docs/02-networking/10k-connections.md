@@ -7,13 +7,13 @@
 
 	A server handling simple echo logic behaves very differently from one performing CPU-bound processing, structured logging, or real-time transformation. Additionally, platform-level tunability varies—Linux exposes granular control through sysctl, epoll, and reuseport, while macOS lacks many of these mechanisms. In that context, achieving and sustaining 10K+ concurrent connections with real workloads is a demanding, yet practical, benchmark.
 
-Handling massive concurrency in Go is often romanticized—*"goroutines are cheap, just spawn them!"*—but reality gets harsher as we push towards six-digit concurrency levels. Serving 10K+ concurrent sockets isn't just about throwing hardware at the problem; it's about building architecture that respects the OS, runtime, and network layers.
+Handling massive concurrency in Go is often romanticized—*"goroutines are cheap, just spawn them!"*—but reality gets harsher as we push towards six-digit concurrency levels. Serving over 10,000 concurrent sockets isn’t something you solve by scaling hardware alone—it requires an architecture that works with the OS, the Go runtime, and the network stack, not against them.
 
 ## Embracing Go’s Concurrency Model
 
 Go’s lightweight goroutines and its powerful runtime scheduler make it an excellent choice for scaling network applications. Goroutines consume only a few kilobytes of stack space, which, in theory, makes them ideal for handling tens of thousands of concurrent connections. However, reality forces us to think beyond just spinning up goroutines. While the language’s abstraction makes concurrency almost “magical,” achieving true efficiency at this scale demands intentional design.
 
-When you run a server that spawns one goroutine per connection, you’re effectively relying on the runtime scheduler to context-switch between thousands of execution threads. It’s crucial to understand that although goroutines are relatively inexpensive, they aren’t free—each one contributes to memory usage and scheduling overhead. Thus, the first design pattern that should be adopted is to ensure that each connection follows a clearly defined lifecycle and that every goroutine performs its task as efficiently as possible.
+Running a server that spawns one goroutine per connection means you’re leaning heavily on the runtime scheduler to juggle thousands of concurrent execution paths. While goroutines are lightweight, they’re not free—each one adds to memory consumption and introduces scheduling overhead that scales with concurrency. Thus, the first design pattern that should be adopted is to ensure that each connection follows a clearly defined lifecycle and that every goroutine performs its task as efficiently as possible.
 
 Let’s consider a basic model where we accept connections and delegate their handling to separate goroutines:
 
@@ -72,11 +72,11 @@ func handleConnection(conn net.Conn) {
 }
 ```
 
-Each accepted connection is processed in its own goroutine in the sample above. Although this model is straightforward and leverages Go’s strengths, it’s only part of the solution. When scaling to 10K+ connections, the design must extend to handle resource limits and prevent runaway resource consumption.
+Each connection is assigned its own goroutine. That approach works fine at low concurrency and fits Go’s model well. But once you’re dealing with tens of thousands of connections, the design has to account for system limits. Goroutines are cheap—but not free.
 
-### Architectural Considerations and Resource Capping
+### Managing Concurrency at Scale
 
-Scaling isn’t just about accepting connections—it’s about managing them throughout their entire lifecycle. One common pitfall is allowing the uncontrolled creation of goroutines, which can lead to memory exhaustion or overwhelm the scheduler. Implementing controlled resource capping through a semaphore-like mechanism is essential.
+It’s not enough to just accept connections; you need to control what happens after. Unbounded goroutine creation leads to memory growth and increased scheduler load. To keep the system stable, concurrency must be capped—typically using a semaphore or similar construct to limit how many goroutines handle active work at any given time.
 
 For example, you might limit the number of simultaneous active connections before spinning up a new goroutine for each incoming connection. This strategy might involve a buffered channel acting as a semaphore:
 
@@ -118,7 +118,7 @@ This pattern not only helps prevent resource exhaustion but also gracefully degr
 
 ### OS-Level and Socket Tuning
 
-Before your Go application can even accept 10K+ connections, your operating system must be tuned to handle such loads. This means adjusting parameters like file descriptor limits and TCP stack configurations. For Linux environments, you typically need to increase the maximum number of open file descriptors:
+Before your Go application can handle more than 10,000 simultaneous connections, the operating system has to be prepared for that scale. On Linux, this usually starts with raising the limit on open file descriptors. The TCP stack also needs tuning—default settings often aren’t designed for high-connection workloads. Without these adjustments, the application will hit OS-level ceilings long before Go becomes the bottleneck.
 
 ```go
 # Increase file descriptor limit
@@ -139,7 +139,7 @@ sysctl -w net.ipv4.tcp_fin_timeout=15
 - `net.ipv4.tcp_tw_reuse=1`: Allows reuse of sockets in `TIME_WAIT` state for new connections if safe. Helps reduce socket exhaustion, especially in short-lived TCP connections.
 - `net.ipv4.tcp_fin_timeout=15`: Reduces the time the kernel holds sockets in `FIN_WAIT2` after a connection is closed. Shorter timeout means faster resource reclamation, crucial when thousands of sockets churn per minute.
 
-Tweaking these parameters ensures that OS-level constraints don’t throttle your application. Additionally, socket options such as `TCP_NODELAY` can be instrumental in reducing latency by turning off [Nagle’s algorithm](https://en.wikipedia.org/wiki/Nagle%27s_algorithm). For example, you can set these options using Go’s `net` package wrappers or by leveraging the syscall package for more granular control.
+Tuning these parameters helps prevent the OS from becoming the bottleneck as connection counts grow. On top of that, setting socket options like `TCP_NODELAY` can reduce latency by disabling [Nagle’s algorithm](https://en.wikipedia.org/wiki/Nagle%27s_algorithm), which buffers small packets by default. In Go, these options can be applied through the net package, or more directly via the syscall package if lower-level control is needed.
 
 In some cases, using Go’s `net.ListenConfig` allows you to inject custom control over socket creation. This is particularly useful when you need to set options at the time of listener creation:
 
@@ -169,9 +169,9 @@ func main() {
 
 ### Go Scheduler and Memory Pressure
 
-Running 10K+ goroutines might sound impressive, but their impact heavily depends on their behavior. If goroutines spend their time blocked on network or disk I/O, Go’s scheduler can efficiently park and resume them with minimal overhead. However, suppose these goroutines frequently allocate memory, spin in busy loops, or engage in tight synchronization via channels or mutexes. In that case, you risk triggering significant GC activity and scheduler churn—ultimately degrading performance.
+Spawning 10,000 goroutines might look impressive on paper, but what matters is how those goroutines behave. If they’re mostly idle—blocked on I/O like network or disk—Go’s scheduler handles them efficiently, parking and resuming with little overhead. But when goroutines actively allocate memory, spin in tight loops, or constantly contend on channels and mutexes, things get expensive. You’ll start to see increased garbage collection pressure and scheduler thrashing, both of which erode performance.
 
-Garbage collection can become a significant bottleneck in applications with heavy allocation patterns. Go’s GC is optimized for low latency, but when hundreds of thousands of goroutines frequently allocate objects, GC cycles intensify, causing latency spikes and reducing throughput.
+Go’s garbage collector handles short-lived allocations well, but it doesn’t come for free. If you’re spawning goroutines that churn through memory—allocating per request, per message, or worse, per loop—GC pressure builds fast. The result isn’t just more frequent collections, but higher latency and lost CPU cycles. Throughput drops, and the system spends more time cleaning up than doing real work.
 
 To manage this, you can explicitly tune the GC aggressiveness:
 
@@ -193,7 +193,7 @@ func main() {
 The default value for `GOGC` is 100, meaning the GC triggers when the heap size doubles compared to the previous GC cycle. Lower values (like 50) mean more frequent but shorter GC cycles, helping control memory growth at the cost of increased CPU overhead.
 
 !!! info
-	In some cases, you may need an opposite – [to increase the `GOGC` value, turn the GC off completely](/01-common-patterns/gc/#gc-tuning-gogc), or prefer [GOMEMLIMIT=X and GOGC=off](/01-common-patterns/gc/#gomemlimitx-and-gogcoff-configuration) configuration. **Do not make a decision before careful profiling!**
+	In some cases, you may need an opposite – [to increase the `GOGC` value, turn the GC off completely](../01-common-patterns/gc.md#gc-tuning-gogc), or prefer [GOMEMLIMIT=X and GOGC=off](../01-common-patterns/gc.md#gomemlimitx-and-gogcoff-configuration) configuration. **Do not make a decision before careful profiling!**
 
 ### Optimizing Goroutine Behavior
 
@@ -214,7 +214,7 @@ If your goroutines must wait, prefer blocking on channels or synchronization pri
 
 ### Pooling and Reusing Objects
 
-Another crucial technique to reduce memory allocations and GC overhead [is using `sync.Pool`](/01-common-patterns/object-pooling):
+Another crucial technique to reduce memory allocations and GC overhead [is using `sync.Pool`](../01-common-patterns/object-pooling.md):
 
 ```go
 var bufPool = sync.Pool{
@@ -231,15 +231,15 @@ func handleRequest() {
 
 1. Be careful here! It's strictly workflow-dependant, when you must return an object to the pool!
 
-Reusing objects through pools significantly reduces allocation frequency, thereby lowering the GC overhead and improving the application's responsiveness.
+Reusing objects through pools reduces memory churn. With fewer allocations, the garbage collector runs less often and with less impact. This translates directly into lower latency and more predictable performance under load.
 
 ### Connection Lifecycle Management
 
-Every connection that hits the server undergoes a lifecycle—from initialization through data exchange to graceful termination. One common challenge is managing idle connections and ensuring they don’t become inadvertent resource hogs. Setting read and write deadlines, as illustrated below, is crucial. Furthermore, implementing an application-level heartbeat or ping mechanism can aid in detecting stale connections and initiating appropriate cleanup routines.
+A connection isn’t just accepted and forgotten—it moves through a full lifecycle: setup, data exchange, teardown. Problems usually show up in the quiet phases. Idle connections that aren’t cleaned up can tie up memory and block goroutines indefinitely. Enforcing read and write deadlines is essential. Heartbeat messages help too—they give you a way to detect dead peers without waiting for the OS to time out.
 
-In one case, a slight delay in the client’s response caused goroutines to accumulate because they were blocked in a read operation. By incorporating deadlines and periodic health checks, the number of zombie goroutines was reduced, significantly improving both stability and resource usage.
+In one production case, slow client responses left goroutines blocked in reads. Over time, they built up until the system started degrading. Adding deadlines and lightweight health checks fixed the leak. Goroutines no longer lingered, and resource usage stayed flat under load.
 
-At the core of this strategy is a lightweight connection handler. Each incoming TCP connection is handled in its own goroutine, allowing the server to scale with thousands of concurrent clients:
+Each connection still runs in its own goroutine—but with proper lifecycle management in place, scale doesn’t come at the cost of stability.
 
 ```go
 for {
@@ -281,8 +281,7 @@ default:
 }
 ```
 
-The result is a loop that reads incoming messages while periodically sending heartbeats, bounded by deadlines on both ends. This simple structure ensures that every connection is actively monitored and that silent failures are detected early—striking a balance between performance and safety.
-
+The loop handles incoming messages and sends periodic heartbeats, with read and write deadlines enforcing boundaries on both sides. This setup keeps each connection under active supervision. Silent failures don’t linger, and the system avoids trading stability for performance.
 
 ## Real-World Tuning and Scaling Pitfalls
 

@@ -62,9 +62,9 @@ Each of these tools has a place in your benchmarking toolkit. Picking the right 
 
 ### Vegeta
 
-[Vegeta](https://github.com/tsenart/vegeta) is a versatile HTTP load testing tool written in Go. It's designed around the idea of **constant rate attacks**, making it ideal for simulating predictable, sustained traffic over time.
+[Vegeta](https://github.com/tsenart/vegeta) is a flexible HTTP load testing tool written in Go, built for generating constant request rates. This makes it well-suited for simulating steady, sustained traffic patterns instead of sudden spikes.
 
-We use Vegeta when we want precision. It excels at holding steady request rates and producing detailed latency histograms, which is crucial for understanding how performance shifts under pressure. It's also scriptable, lightweight, and fits naturally into CI pipelines—making it a solid choice for Go backend benchmarking.
+We reach for Vegeta when precision matters. It maintains exact request rates and captures detailed latency distributions, which helps track how system behavior changes under load. It’s lightweight, easy to automate, and integrates cleanly into CI workflows—making it a reliable option for benchmarking Go services.
 
 Install:
 
@@ -193,9 +193,9 @@ wrk -t4 -c100 -d30s http://localhost:8080/fast
 
 ### k6
 
-[k6](https://k6.io) is a modern load-testing tool built for scripting realistic scenarios in JavaScript. It focuses on simulating time-based load patterns such as ramp-up, steady-state, and ramp-down phases and supports scripting custom request flows, pacing, and test thresholds.
+[k6](https://k6.io) is a modern load testing tool built around scripting realistic client behavior in JavaScript. It’s designed for simulating time-based load profiles—ramp-up, steady-state, ramp-down—and supports custom flows, pacing, and threshold-based validation.
 
-We use `k6` when we want to move beyond raw throughput and simulate **how real clients behave** over time. It’s ideal for reproducing production-like load patterns, chaining HTTP calls, and defining test stages. With built-in support for detailed metrics and cloud execution, `k6` fits naturally into CI/CD workflows and helps catch performance regressions before they ship.
+We use `k6` when raw throughput isn’t enough and we need to simulate how real users interact with the system. It handles chained requests, models session-like flows, and supports stage-based testing out of the box. With rich metrics and seamless CI/CD integration, `k6` helps surface regressions before they reach production.
 
 Install:
 
@@ -285,15 +285,14 @@ Profiling Go applications that heavily utilize networking is crucial to identify
 %}
 ```
 
-This allows uninterrupted monitoring of your application during high network load.
-
-How to collect data:
+It's possible to inspect the application in real time, even under heavy load. To capture a CPU profile:
 
 ```bash
 go tool pprof http://localhost:6060/debug/pprof/profile?seconds=30
 ```
 
-Then, you can view results interactively. Exposing `pprof` HTTP server allows us to get access to all performance-related information, including CPU Profiling, Flamegraphs, and so on. 
+This grabs a 30-second snapshot of CPU usage. With the `pprof` HTTP server exposed, all runtime data—CPU, memory, goroutines, contention, flamegraphs—is available without pausing or restarting the application.
+
 
 ```bash
 go tool pprof -http=:7070 cpu.prof #(1)
@@ -303,7 +302,7 @@ go tool pprof -http=:7070 cpu.prof #(1)
 
 ### CPU Profiling
 
-CPU profiling under load helps pinpoint processing inefficiencies, which is especially crucial for networked applications where serialization, request handling, and concurrency are common bottlenecks.
+Profiling a system at rest rarely tells the full story. Real bottlenecks show up under pressure—when requests stack up, threads compete, and memory churn increases. CPU profiling during load reveals where execution time concentrates, often exposing slow serialization, inefficient handler logic, or contention between goroutines. These are the paths that quietly limit throughput and inflate latency when traffic scales.
 
 #### What to Look For
 - Network Serialization Hotspots: Frequent use of `json.Marshal` or similar serialization methods during network response generation.
@@ -314,10 +313,11 @@ CPU profiling under load helps pinpoint processing inefficiencies, which is espe
 
 ### Flamegraphs
 
-Flamegraphs offer intuitive visual profiling of complex network call paths, clearly showing hotspots and bottlenecks related to request handling and network interactions.
+Flamegraphs provide a visual summary of where CPU time is spent by aggregating and collapsing stack traces into a single view. They make it easy to identify performance hotspots without digging through raw profiling data. In server applications, this often highlights issues in request handling, serialization, or blocking I/O. Under load, flamegraphs are especially useful for catching subtle inefficiencies that scale into major performance problems.
 
 #### What to Look For
-- Wide Layers Functions dealing with network connections or data transfer appearing as wide layers indicate excessive time spent on network operations or data serialization.
+
+- Functions related to network I/O or data transfer that appear as wide blocks in a flamegraph often point to excessive time spent on serialization, buffering, or socket operations.
 - Deep Call Chains Deep stacks could reveal inefficient middleware or unnecessary layers in network request handling.
 - Unexpected Paths Look for unexpected serialization, reflection, or routing inefficiencies.
 
@@ -325,7 +325,7 @@ Flamegraphs offer intuitive visual profiling of complex network call paths, clea
 
 ### Managing Garbage Collection (GC) Pressure
 
-Memory profiling is vital for detecting inefficient object allocation due to network operations, such as repeated buffer creations or temporary object allocations. You should follow almost the same steps for CPU profiling here using `pprof`.
+Memory profiling helps identify where your application is wasting heap space, especially in network-heavy code paths. Common issues include repeated allocation of response buffers, temporary objects, or excessive use of slices and maps. These patterns often go unnoticed until they trigger GC pressure or latency under load. Profiling with `pprof` follows the same basic steps as CPU profiling, making it easy to integrate into your existing workflow.
 
 ```bash
 go tool pprof http://localhost:6060/debug/pprof/heap
@@ -351,18 +351,16 @@ Example: Optimizing buffer reuse using `sync.Pool` greatly reduces GC pressure d
 
 ### Identifying CPU Bottlenecks
 
-Network-heavy apps frequently encounter CPU bottlenecks under sustained high loads. Profiling helps uncover these critical points:
+Networked applications often hit CPU limits first when pushed under sustained load. Profiling helps surface where time is actually being spent and what’s getting in the way.
 
 #### What to Look For
-- Throughput Plateau with Increasing Latency: Indicates CPU bottlenecks handling network requests.
-- Scheduler and Concurrency Issues (`runtime.schedule`, `mcall`): Excessive scheduling overhead due to numerous goroutines handling network connections.
-- Lock Contention on Network Resources: Frequent locking on shared network resources or blocking channel operations hindering concurrency.
+- Latency Rising While Throughput Stalls: A sign the CPU is saturated, often from request processing or serialization overhead.
+- Scheduler Overhead (runtime.schedule, mcall): Too many goroutines can overwhelm the scheduler, especially when each connection gets its own handler.
+- Lock Contention: Repeated locking on shared network state or blocking channel operations slows down throughput and limits parallelism.
 
-Example: Profiling revealing significant CPU time spent in TLS handshake routines might necessitate asynchronous or optimized handshake handling.
+For example, if profiling shows excessive time spent in TLS handshake routines, the fix might involve moving handshakes off the hot path or reducing handshake frequency with connection reuse.
 
-**Why This Matters:** Addressing CPU bottlenecks directly improves scalability, enabling network-intensive applications to manage increased user load effectively.
-
-In-depth profiling tailored for network-heavy Go applications ensures optimal performance, scalability, and resilience, which is particularly crucial during peak traffic conditions.
+**Why it matters:** CPU bottlenecks cap your ability to scale. Fixing them is often the difference between a system that handles 5K clients and one that handles 50K.
 
 ### Practicle example of Profiling Networked Go Applications with `pprof`
 

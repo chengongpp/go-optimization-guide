@@ -123,7 +123,7 @@ This avoids dynamic allocations on each request and leads to more predictable me
 
 ### Use `bufio.Reader.Peek()` for Efficient Framing
 
-When you're building a framed protocol over TCP (e.g., length-prefixed binary messages), calling `Read()` repeatedly can introduce syscall overhead and poor performance due to fragmented reads. Using `Peek()` allows you to look ahead into the buffered data without consuming it, enabling efficient protocol detection and boundary handling. This is especially useful in multiplexed systems or streaming services where precise message boundaries matter.
+When implementing a framed protocol over TCP, like length-prefixed binary messages, naively calling `Read()` in a loop can lead to fragmented reads and unnecessary syscalls. This adds up, especially under load. Using `Peek()` gives you a look into the buffered data without advancing the read position, making it easier to detect message boundaries without triggering extra reads. It’s a practical technique in streaming systems or multiplexed connections where tight control over framing is critical.
 
 ```go
 header, _ := reader.Peek(8) // Peek without advancing the buffer
@@ -131,9 +131,9 @@ header, _ := reader.Peek(8) // Peek without advancing the buffer
 
 ### Force Fresh DNS Lookups with Custom Dialers
 
-Go caches DNS results for the lifetime of the process. This can lead to stale IPs when using short-lived infrastructure like Kubernetes pods, where service IPs shift frequently. To ensure timely failover and routing, you can create a new `Dialer` per request or periodically reset the client.
+Go’s built-in DNS caching lasts for the lifetime of the process. In dynamic environments, like Kubernetes, this can become a problem when service IPs change but clients keep reusing stale ones. To avoid this, you can force fresh DNS lookups by creating a new net.Dialer per request or rotating the HTTP client periodically.
 
-Here's how to bypass Go's internal DNS cache:
+But you can bypass Go’s internal DNS cache when needed:
 
 ```go
 DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -167,11 +167,11 @@ This practice significantly reduces allocation churn and improves latency consis
 
 While it might seem efficient to reuse a single `http.Client`, each target host maintains its own internal connection pool within the underlying `http.Transport`. If you use the same client for multiple base URLs, you end up mixing connection reuse and causing head-of-line blocking across unrelated services. Worse, DNS caching and socket exhaustion become harder to track.
 
-Instead, define one `http.Client` per logical upstream service, especially if you operate within a service mesh or call many third-party APIs. This approach improves isolation and predictability.
+Instead, create a dedicated `http.Client` for each upstream service you interact with. This improves connection reuse, avoids cross-talk between services, and usually makes behavior more predictable, especially in environments like service meshes or when dealing with multiple external APIs.
 
 ### Use `ConnContext` and `ConnState` Hooks for Debugging
 
-These hooks are invaluable when diagnosing long-lived connections, memory leaks, or resource exhaustion in production. `ConnState` lets you track transitions such as `StateNew`, `StateActive`, `StateIdle`, and `StateHijacked` per connection.
+These hooks are useful for tracking the lifecycle of each connection—especially when debugging issues like memory leaks, stuck connections, or resource exhaustion in production. The `ConnState` callback gives visibility into transitions such as `StateNew`, `StateActive`, `StateIdle`, and `StateHijacked`, allowing you to log, trace, or apply custom handling per connection state.
 
 By monitoring these events, you can detect when connections hang, fail to close, or unexpectedly idle out. It also helps when correlating behavior with client IPs or network zones.
 
