@@ -1,44 +1,39 @@
 # Patterns and Techniques for Writing High-Performance Applications with Go
 
-The **Go App Optimization Guide** is a collection of technical articles aimed at helping developers write faster, more efficient Go applications. Whether you're building high-throughput APIs, microservices, or distributed systems, this series offers practical patterns, real-world use cases, and low-level performance insights to guide your optimization efforts.
+The **Go App Optimization Guide** is a series of in-depth, technical articles for developers who want to get more performance out of their Go code without relying on guesswork or cargo cult patterns. If you’re building services that need to handle real load—APIs, backend pipelines, or distributed systems—this guide focuses on the kind of low-level behavior and tuning opportunities that actually matter in production.
 
-While Go doesn’t expose as many knobs for performance tuning as languages like C++ or Rust, it still provides **plenty of opportunities** to make your applications significantly faster. From memory reuse and allocation control to efficient networking and concurrency patterns, Go offers a pragmatic set of tools for writing high-performance code.
+Go doesn’t give you the kind of fine-grained control you’d find in C++ or Rust, but it does give you just enough visibility to reason about performance—and just enough tooling to do something about it. From understanding allocation patterns and reducing GC overhead to building efficient network services and managing concurrency at scale, the series focuses on optimizations that are both practical and measurable.
 
-We focus on **concrete techniques** with **measurable impact** you can apply immediately—covering everything from core language features to advanced networking strategies.
+The goal isn’t to write clever code—it’s to write fast, predictable code that holds up under pressure. Everything in this guide is backed by real use cases, stripped of theory, and aimed at what you can apply right now.
 
-## :material-note-check: What’s Covered So Far
+## [Common Go Patterns for Performance](01-common-patterns/index.md)
 
-### [Common Go Patterns for Performance](01-common-patterns/index.md)
+This first article series covers a set of performance patterns that come up again and again when writing real-world Go code. It’s not an exhaustive list, but it hits the areas where small changes tend to make a noticeable difference:
 
-In this first article, we explore a curated set of high-impact performance patterns every Go developer should know:
+- Making proper use of `sync.Pool`
+- Cutting down on unnecessary allocations
+- Struct layout and memory alignment details that affect cache performance
+- Error handling that doesn’t drag down the fast path
+- Using interfaces without paying for them
+- Reusing slices and sorting in-place
 
-- Using `sync.Pool` effectively
-- Avoiding unnecessary allocations
-- Struct layout and memory alignment
-- Efficient error handling
-- Zero-cost abstractions with interfaces
-- In-place sorting and slices reuse
-
-Each pattern is grounded in practical use cases, with benchmarks and examples you can copy into your own codebase.
+Each pattern includes real code and numbers you can apply directly—no theory, no fluff.
 
 ---
 
-## :material-progress-check: What’s Coming Next
+## [High-Performance Networking in Go](02-networking/index.md)
 
-!!! info
-	WIP is under [networking-go](https://github.com/astavonin/go-optimization-guide/tree/networking-go) branch.
+This section takes a focused look at what it takes to build fast, reliable network services in Go. It covers not just how to use the standard library, but how to push it further when you’re dealing with real load.
 
-### [High-Performance Networking in Go](02-networking/index.md)
+Topics include:
 
-In our upcoming deep dive into networking, we'll focus on building high-throughput network services with Go’s standard library and beyond. This includes:
+- Getting the most out of `net/http` and `net.Conn`
+- Handling large numbers of concurrent connections without falling over
+- Tuning for system-level performance with `epoll`, kque`ue, and `GOMAXPROCS`
+- Running realistic load tests and tracking down bottlenecks
+- More coming soon…
 
-- Efficient use of `net/http` and `net.Conn`
-- Managing large volumes of concurrent connections
-- Performance tuning with epoll/kqueue and `GOMAXPROCS`
-- Load testing techniques and bottleneck diagnostics
-- TBD...
-
-We'll also explore when to drop down to lower-level libraries like `fasthttp`, and how to balance performance with maintainability.
+While the goal is to keep everything grounded in practical examples, this part leans more theoretical for now due to the exploratory nature of the networking topics being developed.
 
 ---
 
@@ -46,11 +41,11 @@ We'll also explore when to drop down to lower-level libraries like `fasthttp`, a
 
 This series is ideal for:
 
-- Backend engineers optimizing Go services in production
-- Developers working on latency-sensitive systems
-- Teams migrating to Go and building performance-critical paths
-- Anyone curious about Go’s performance model and trade-offs
+- Engineers working on backend systems where Go’s performance actually matters
+- Developers building latency-sensitive services or handling high-throughput traffic
+- Teams moving critical paths to Go and needing to understand the trade-offs
+- Anyone who wants a clearer picture of how Go behaves under load
 
 ---
 
-Stay tuned—more articles, code samples, and tools are on the way. You can bookmark this page to follow the series as it evolves.
+More content is coming soon—additional articles, practical code examples, and tooling insights. Bookmark this page to keep up as the series grows.
