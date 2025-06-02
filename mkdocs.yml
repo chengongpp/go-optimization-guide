@@ -91,6 +91,8 @@ nav:
     - Diagnostics and Resilience:
       - Building Resilient Connection Handling: 02-networking/resilient-connection-handling.md
       - Memory Management and Leak Prevention in Long-Lived Connections: 02-networking/long-lived-connections.md
+    - Transport-Level Optimization:
+      - Comparing TCP, HTTP/2, and gRPC Performance in Go: 02-networking/tcp-http2-grpc.md
 
 markdown_extensions:
   - toc:

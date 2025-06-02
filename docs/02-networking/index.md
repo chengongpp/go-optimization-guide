@@ -50,7 +50,7 @@ A 15-part guide to building scalable, efficient, and resilient networked applica
 
 ## Transport-Level Optimization
 
-- Comparing TCP, HTTP/2, and gRPC Performance in Go
+- [Comparing TCP, HTTP/2, and gRPC Performance in Go](tcp-http2-grpc.md)
 
 	Benchmark and analyze different transport protocols in Go: raw TCP with custom framing, HTTP/2 via `net/http`, and gRPC. Evaluate latency, throughput, connection reuse, and CPU/memory cost across real scenarios like internal APIs, messaging systems, and microservices.
 
