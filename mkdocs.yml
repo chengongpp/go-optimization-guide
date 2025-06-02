@@ -120,7 +120,6 @@ plugins:
   - search
   - blog
   - glightbox
-  - git-revision-date-localized
   - include-markdown
   - rss:
       match_path: "(blog|01-common-patterns|02-networking)/.*"
