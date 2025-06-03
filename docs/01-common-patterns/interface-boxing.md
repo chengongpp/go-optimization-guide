@@ -6,12 +6,12 @@ In many cases, boxing is harmless. But in performance-sensitive code—like tigh
 
 ## What is Interface Boxing?
 
-Interface boxing refers to the process of converting a concrete value to an interface type. In Go, an interface value consists of two parts internally:
+Interface boxing refers to the process of converting a concrete value to an interface type. In Go, an interface value is internally represented as two words:
 
-- A **type descriptor**, which describes the concrete type.
-- A **data pointer**, which points to the actual value.
+- A **type descriptor**, which holds information about the concrete type (its identity and method set).
+- A **data pointer**, which points to the actual value being stored.
 
-When you assign a value to an interface variable, Go creates this two-word structure under the hood. If the value is a non-pointer (a struct or a primitive) and is not already heap-allocated, Go **may** allocate a copy of it on the heap. This is especially relevant when the value is large or when it's stored in a slice of interfaces.
+When you assign a value to an interface variable, Go creates this two-part structure. If the value is a non-pointer type—like a struct or primitive—and is not already on the heap, Go **may** allocate a copy of it on the heap to satisfy the interface assignment. This behavior is especially relevant when working with large values or when storing items in a slice of interfaces, where each element gets individually boxed. These implicit allocations can add up and are a common source of hidden memory pressure in Go programs.
 
 Here’s a simple example:
 

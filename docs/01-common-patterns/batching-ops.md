@@ -1,10 +1,10 @@
 # Batching Operations in Go
 
-Batching is a simple but effective way to boost performance in high-throughput Go applications. By grouping multiple operations into a single call, you can minimize repeated overhead—from network round-trips and disk I/O to database commits and CPU cycles. It’s a practical technique that can make a big difference in both latency and resource usage.
+Batching is one of those techniques that’s easy to overlook but incredibly useful when performance starts to matter. Instead of handling one operation at a time, you group them together—cutting down on the overhead of repeated calls, whether that’s hitting the network, writing to disk, or making a database commit. It’s a practical, low-complexity approach that can reduce latency and stretch your system’s throughput further than you’d expect.
 
 ## Why Batching Matters
 
-Systems frequently encounter performance issues not because individual operations are inherently costly, but because they occur in high volume. Each call to external resources—such as APIs, databases, or storage—introduces latency, system calls, and potential context switching. Batching groups these operations to minimize repeated overhead, substantially improving throughput and efficiency.
+Most systems don’t struggle because individual operations are too slow—they struggle because they do too many of them. Every call out to a database, API, or filesystem adds some fixed cost: a system call, a network round trip, maybe a lock or a context switch. When those costs add up across high-volume workloads, the impact is hard to ignore. Batching helps by collapsing those calls into fewer, more efficient units of work, which often leads to measurable gains in both performance and resource usage.
 
 Consider a logging service writing to disk:
 

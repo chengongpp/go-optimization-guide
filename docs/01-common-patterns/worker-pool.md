@@ -1,6 +1,8 @@
 # Goroutine Worker Pools in Go
 
-Go’s lightweight concurrency model makes spawning goroutines nearly free in terms of syntax and initial memory footprint—but that freedom isn’t as cheap as it may seem at first glance. Under high load, unbounded concurrency can quickly lead to excessive memory usage, increased context switching, and unpredictable performance, or even system crashes. A goroutine worker pool introduces controlled parallelism by capping the number of concurrent workers, helping to maintain a balance between resource usage, latency, and throughput.
+Go’s concurrency model makes it deceptively easy to spin up thousands of goroutines—but that ease can come at a cost. Each goroutine starts small, but under load, unbounded concurrency can cause memory usage to spike, context switches to pile up, and overall performance to become unpredictable.
+
+A worker pool helps apply backpressure by limiting the number of active goroutines. Instead of spawning one per task, a fixed pool handles work in controlled parallelism—keeping memory usage predictable and avoiding overload. This makes it easier to maintain steady performance even as demand scales.
 
 ## Why Worker Pools Matter
 
@@ -55,14 +57,14 @@ If your tasks are I/O-bound (e.g., network calls, disk I/O, database queries), t
 
 ### Why Too Many Workers Hurts Performance
 
-While adding more workers might seem to increase throughput, this only holds up to a point. Beyond the optimal concurrency level, more workers introduce problems:
+Adding more workers can seem like a straightforward way to boost throughput, but the benefits taper off quickly past a certain point. Once you exceed the system’s optimal level of concurrency, performance often degrades instead of improving.
 
-- **Scheduler contention**: Go’s runtime has to manage more runnable goroutines than it has CPU cores.
-- **Context switching**: Excess goroutines create frequent CPU context switches, wasting cycles.
-- **Memory pressure**: Each goroutine consumes stack space; more workers increase memory usage.
-- **Cache thrashing**: CPU cache efficiency degrades as goroutines bounce between cores.
+- Scheduler contention increases as the Go runtime juggles more runnable goroutines than it has logical CPUs to run them.
+- Context switching grows more frequent, burning CPU cycles without doing real work.
+- Memory pressure rises because each goroutine holds its own stack, even when idle.
+- Cache thrashing becomes more likely as goroutines bounce across cores, disrupting locality and degrading CPU cache performance.
 
-This leads to higher latency, more GC activity, and ultimately slower throughput—precisely the opposite of what a well-tuned pool is meant to achieve.
+The result: higher latency, increased GC activity, and reduced throughput—the exact opposite of what a properly tuned worker pool is supposed to deliver.
 
 ## Benchmarking Impact
 
@@ -90,10 +92,10 @@ In our benchmark, each task performed a CPU-intensive operation (e.g., cryptogra
 
 :material-checkbox-marked-circle-outline: Use a goroutine worker pool when:
 
-- You have a large or unbounded stream of incoming work. A pool helps prevent unbounded goroutine growth, which can lead to memory exhaustion and degraded system performance.
-- Processing tasks concurrently can overwhelm system resources. Worker pools provide backpressure and resource control by capping concurrency, helping you avoid CPU thrashing, connection saturation, or I/O overload.
-- You want to limit the number of parallel operations for stability. Controlling the number of active workers reduces the risk of spikes in system load, improving predictability and service reliability under pressure.
-- Tasks are relatively uniform in cost and benefit from queuing. When task sizes are similar, a fixed pool size ensures efficient throughput and fair task distribution without excessive coordination overhead.
+- The workload is unbounded or high volume. A pool prevents uncontrolled goroutine growth, which can lead to memory exhaustion, GC pressure, and unpredictable performance.
+- Unbounded concurrency risks resource saturation. Capping the number of concurrent workers helps avoid overwhelming the CPU, network, database, or disk I/O—especially under load.
+- You need predictable parallelism for stability. Limiting concurrency smooths out performance spikes and keeps system behavior consistent, even during traffic surges.
+- Tasks are relatively uniform and queue-friendly. When task cost is consistent, a fixed pool size provides efficient scheduling with minimal overhead, ensuring good throughput without complex coordination.
 
 :fontawesome-regular-hand-point-right: Avoid a worker pool when:
 

@@ -26,26 +26,24 @@ Even though Go’s garbage collector is mostly concurrent, it still requires bri
 STW is essential for ensuring that memory structures are not mutated while the GC analyzes them. In most applications, these pauses are imperceptible. However, even sub-millisecond pauses in latency-sensitive systems can be significant—so understanding and monitoring STW behavior becomes important when optimizing for tail latencies or jitter.
 
 - **STW Start Phase:** The application is briefly paused to initiate GC. The runtime scans stacks, globals, and root objects.
-- **Concurrent Mark Phase:** The GC walks the heap graph and marks reachable objects in parallel with your program. This is the most substantial phase and runs concurrently with minimal interference.
-- **STW Mark Termination:** A short pause occurs to finalize marking and ensure consistency.
+- **Concurrent Mark Phase:** The garbage collector traverses the heap, marking all reachable objects while the program continues running. This is the heaviest phase in terms of work but runs concurrently to avoid long stop-the-world pauses.
+- **STW Mark Termination:** Once marking is mostly complete, the GC briefly pauses the program to finish any remaining work and ensure the heap is in a consistent state before sweeping begins. This pause is typically very short—measured in microseconds.
 - **Concurrent Sweep Phase:** The GC reclaims memory from unreachable (white) objects and returns it to the heap for reuse, all while your program continues running.
 
 Write barriers ensure correctness while the application mutates objects during concurrent marking. These barriers help track references created or modified mid-scan so the GC doesn’t miss them.
 
 ### Tri-color Mark and Sweep
 
-The tri-color algorithm organizes heap objects into three sets:
+The tri-color algorithm breaks the heap into three working sets during garbage collection:
 
-- **White**: Unreachable objects (candidates for collection)
-- **Grey**: Reachable but not fully scanned (discovered but not processed)
-- **Black**: Reachable and fully scanned (safe from collection)
+- **White:** Objects that haven’t been reached—if they stay white, they’ll be collected.
+- **Grey:** Objects that have been discovered (i.e., marked as reachable) but haven’t had their references scanned yet.
+- **Black:** Objects that are both reachable and fully scanned—they’re retained and don’t need further processing.
 
-The GC begins by marking root objects as grey. It then processes each grey object, scanning its fields:
 
-- Any referenced objects not already marked are added to the grey set.
-- Once all references are scanned, the object is turned black.
+Garbage collection starts by marking all root objects (stack, globals, etc.) grey. It then walks the grey set: for each object, it scans its fields. Any referenced objects that are still white are added to the grey set. Once an object’s references are fully processed, it’s marked black.
 
-Objects left white at the end of the mark phase are unreachable and swept during the sweep phase.
+When no grey objects remain, anything still white is unreachable and gets cleaned up during the sweep phase. This model ensures that no live object is accidentally collected—even if references change mid-scan—thanks to Go’s write barriers that maintain the algorithm’s core invariants.
 
 A key optimization is **incremental marking**: Go spreads out GC work to avoid long pauses, supported by precise stack scanning and conservative write barriers. The use of concurrent sweeping further reduces latency, allowing memory to be reclaimed without halting execution.
 
@@ -53,7 +51,7 @@ This design gives Go a GC that’s safe, fast, and friendly to server workloads 
 
 ## GC Tuning: GOGC
 
-Go’s garbage collector is well-tuned out of the box. In most cases, the default setting for `GOGC` provides a solid balance between memory usage and CPU overhead. Manual GC tuning is unnecessary—and often counterproductive for most workloads, especially general-purpose services.
+Go’s garbage collector is tuned to deliver good performance without manual configuration. The default `GOGC` setting typically strikes the right balance between memory consumption and CPU effort, adapting well across a wide range of workloads. In most cases, manually tweaking it offers little benefit—and in many, it actually makes things worse by increasing either pause times or memory pressure. Unless you’ve profiled a specific bottleneck and understand the trade-offs, it’s usually best to leave `GOGC` alone.
 
 That said, there are specific cases where tuning `GOGC` can yield significant gains. For example, [Uber implemented dynamic GC tuning](https://www.uber.com/en-GB/blog/how-we-saved-70k-cores-across-30-mission-critical-services/) across their Go services to reduce CPU usage and saved tens of thousands of cores in the process. Their approach relied on profiling, metric collection, and automation to safely adjust GC behavior based on actual memory pressure and workload characteristics.
 
@@ -82,7 +80,7 @@ Setting a `GOMEMLIMIT` helps prevent this. For example, if your container has a 
 GOMEMLIMIT=400MiB
 ```
 
-This gives the Go runtime a safe buffer to start collecting more aggressively before hitting the system-enforced limit, reducing the risk of termination. It also ensures there's headroom for non-heap allocations such as goroutine stacks and internal runtime data.
+This buffer gives the Go runtime room to act before reaching the hard system-imposed memory cap. It allows the garbage collector to become more aggressive as total memory usage grows, reducing the chances of the process being killed due to an out-of-memory condition. It also leaves space for non-heap allocations—like goroutine stacks, OS threads, and other internal runtime structures—which don’t count toward heap size but still consume real memory.
 
 You can also set the limit programmatically:
 
@@ -178,7 +176,7 @@ See [Memory Preallocation](./mem-prealloc.md) for more details.
 
 ## Weak References in Go
 
-Go 1.24 introduced the `weak` package, which offers a safer and standardized way to create weak references. Weak references allow you to reference an object without preventing it from being garbage collected. In typical garbage-collected systems, holding a strong reference to an object ensures that it remains alive. This can lead to unintended memory retention—especially in caches, graphs, or deduplication maps—where references are kept long after the object is actually needed.
+Go 1.24 added the `weak` package, providing a standardized way to create weak references—pointers that don’t keep their target objects alive. In garbage-collected systems like Go, strong references extend an object’s lifetime: as long as something points to it, it won’t be collected. That’s usually what you want, but in structures like caches, deduplication maps, or object graphs, this can lead to memory staying alive much longer than intended. Weak references solve that by allowing you to refer to an object without blocking the GC from reclaiming it when nothing else is using it.
 
 A weak reference, by contrast, tells the garbage collector: “you can collect this object if nothing else is strongly referencing it.” This pattern is important for building memory-sensitive data structures that should not interfere with garbage collection.
 
@@ -217,7 +215,7 @@ Original: Important
 Data has been collected
 ```
 
-Here, wp holds a weak reference to Session. Once the strong reference (s) is dropped and GC runs, the session object can be collected, and wp.Value() will return nil. This is particularly useful for memory-sensitive structures like caches or canonicalization maps. Always check the result of `Value()` to confirm the object is still valid.
+In this example, `wp` holds a weak reference to a `Data` object. After the strong reference (`data`) goes out of scope and the garbage collector runs, the `Data` may be collected—at which point `wp.Value()` will return nil. This pattern is especially useful in memory-sensitive contexts like caches or canonicalization maps, where you want to avoid artificially extending object lifetimes. Always check the result of `Value()` before using it, since the target may have been reclaimed.
 
 ## Benchmarking Impact
 

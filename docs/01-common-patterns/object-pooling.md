@@ -1,12 +1,12 @@
 # Object Pooling
 
-Object pooling is a practical way to cut down on memory allocation costs in performance-critical Go applications. Instead of creating and discarding objects repeatedly, you reuse them from a shared pool—saving both CPU time and pressure on the garbage collector.
+Object pooling helps reduce allocation churn in high-throughput Go programs by reusing objects instead of allocating fresh ones each time. This avoids repeated work for the allocator and eases pressure on the garbage collector, especially when dealing with short-lived or frequently reused structures.
 
-Go’s `sync.Pool` makes this pattern easy to implement, especially when you’re working with short-lived objects that are created and discarded often. It’s a simple tool that can help smooth out GC behavior and improve throughput under load.
+Go’s `sync.Pool` provides a built-in way to implement pooling with minimal code. It’s particularly effective for objects that are expensive to allocate or that would otherwise contribute to frequent garbage collection cycles. While not a silver bullet, it’s a low-friction tool that can lead to noticeable gains in latency and CPU efficiency under sustained load.
 
 ## How Object Pooling Works
 
-Object pooling allows objects to be reused rather than allocated anew, minimizing the strain on the garbage collector. Instead of requesting new memory from the heap each time, objects are fetched from a pre-allocated pool and returned when no longer needed. This reduces allocation overhead and improves runtime efficiency.
+Object pooling allows programs to reuse memory by recycling previously allocated objects instead of creating new ones on every use. Rather than hitting the heap each time, objects are retrieved from a shared pool and returned once they’re no longer needed. This reduces the number of allocations, cuts down on garbage collection workload, and leads to more predictable performance—especially in workloads with high object churn or tight latency requirements.
 
 ### Using `sync.Pool` for Object Reuse
 
@@ -110,7 +110,7 @@ To prove that object pooling actually reduces allocations and improves speed, we
 | BenchmarkWithoutPooling-14 | 1,692,014   | 705.4            | 8,192         | 1              |
 | BenchmarkWithPooling-14    | 160,440,506 | 7.455            | 0             | 0              |
 
-The benchmark results highlight the performance and memory usage differences between direct allocations and object pooling. The `BenchmarkWithoutPooling` function demonstrates higher execution time and memory consumption due to frequent heap allocations, resulting in increased garbage collection cycles. A nonzero allocation count confirms that each iteration incurs a heap allocation, contributing to GC overhead and slower performance.
+The benchmark results highlight the contrast in performance and memory usage between direct allocations and object pooling. In `BenchmarkWithoutPooling`, each iteration creates a new object on the heap, leading to higher execution time and increased memory consumption. This constant allocation pressure triggers more frequent garbage collection, which adds latency and reduces throughput. The presence of nonzero allocation counts per operation confirms that each iteration contributes to GC load, making this approach less efficient in high-throughput scenarios.
 
 ## When Should You Use `sync.Pool`?
 

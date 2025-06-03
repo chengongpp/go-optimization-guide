@@ -4,9 +4,9 @@ In Go, some resources are expensive to initialize, or simply unnecessary unless 
 
 ### Why Lazy Initialization Matters
 
-Initializing complex resources—such as database connections, caches, or large data structures—at application startup can significantly delay launch time and unnecessarily consume memory. Lazy initialization ensures these resources are only created when needed, optimizing resource usage and performance.
+Initializing heavy resources like database connections, caches, or large in-memory structures at startup can slow down application launch and consume memory before it’s actually needed. Lazy initialization defers this work until the first time the resource is used, keeping startup fast and memory usage lean.
 
-Additionally, lazy initialization is crucial when you have code that might be executed multiple times, but you need a resource or logic executed precisely once. This pattern helps ensure idempotency and avoids redundant processing.
+It’s also a practical pattern when you have logic that might be triggered multiple times but should only run once—ensuring that expensive operations aren’t repeated and that initialization remains safe and idempotent across concurrent calls.
 
 ### Using `sync.Once` for Thread-Safe Initialization
 
@@ -43,9 +43,9 @@ func processData() {
 }
 ```
 
-Here, `sync.OnceValue` neatly encapsulates initialization logic and directly returns the initialized value, eliminating explicit state management.
+Here, ] provides a concise way to wrap one-time initialization logic and access the result without managing flags or mutexes manually. It simplifies lazy loading by directly returning the computed value on demand.
 
-For scenarios where your initialization returns multiple values, `sync.OnceValues` offers a clean and efficient solution:
+For cases where the initializer returns more than one value—such as a resource and an error—`sync.OnceValues` extends the same idea. It ensures the function runs exactly once and cleanly unpacks the results, keeping the code readable and thread-safe without boilerplate.
 
 ```go
 var getConfig = sync.OnceValues(func() (*Config, error) {
@@ -65,7 +65,10 @@ Choosing `sync.OnceValue` or `sync.OnceValues` helps you clearly express initial
 
 ### Custom Lazy Initialization with Atomic Operations
 
-Yes, it’s technically possible to replace `sync.Once`, `sync.OnceValue`, or `sync.OnceFunc` with custom logic using low-level atomic operations. This approach may offer slightly finer control or avoid allocations in extremely performance-critical code paths.
+
+Yes, it’s technically possible to replace `sync.Once`, `sync.OnceValue`, or `sync.OnceFunc` with custom logic using low-level atomic operations like `atomic.CompareAndSwap` or `atomic.Load/Store`. In rare, performance-critical paths, this can avoid the small overhead or allocations that come with the standard types.
+
+However, the trade-off is complexity. You lose the safety guarantees and clarity of the standard primitives, and it becomes easier to introduce subtle bugs—especially under concurrency. Unless profiling shows that sync.Once is a bottleneck, the standard versions are almost always the better choice.
 
 **That said, it’s rarely worth the tradeoff.**
 

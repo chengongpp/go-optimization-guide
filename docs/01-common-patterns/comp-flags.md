@@ -1,6 +1,6 @@
 # Leveraging Compiler Optimization Flags in Go
 
-When optimizing Go applications for performance, we often focus on profiling, memory allocations, or concurrency patterns. But another layer worth considering is how the Go compiler optimizes your code during the build process.
+When tuning Go applications for performance, most of the attention goes to runtime behavior—profiling hot paths, trimming allocations, improving concurrency. But there’s another layer that’s easy to miss: what the Go compiler does with your code before it ever runs. The build process includes several optimization passes, and understanding how to surface or influence them can give you clearer insights into what’s actually happening under the hood. It’s not about tweaking obscure flags to squeeze out extra instructions—it’s about knowing how the compiler treats your code so you’re not working against it.
 
 While Go doesn’t expose the same granular set of compiler flags as C or Rust, it still provides useful ways to influence how your code is built—especially when targeting performance, binary size, or specific environments.
 

@@ -4,7 +4,7 @@ Buffering is a core performance technique in systems programming. In Go, it's es
 
 ## Why Buffering Matters
 
-Every read or write to a file or socket may invoke a syscall or context switch. System calls involve a costly transition from user space (where your application runs) into kernel space (managed by the operating system). This overhead includes kernel mode entry, potential context switching, disk buffering, and queuing of write operations. By aggregating data in memory and writing or reading in chunks, buffered operations dramatically reduce the frequency and cost of these syscalls.
+Every time you read from or write to a file or socket, there’s a good chance you’re triggering a system call—and that’s not cheap. System calls move control from user space into kernel space, which means crossing a boundary that comes with overhead: entering kernel mode, possible context switches, interacting with I/O buffers, and sometimes queuing operations behind the scenes. Doing that once in a while is fine. Doing it thousands of times per second? That’s a problem. Buffering helps by batching small reads or writes into larger chunks, reducing how often you cross that boundary and making far better use of each syscall.
 
 For example, writing to a file in a loop without buffering, like this:
 
@@ -15,7 +15,7 @@ for i := 0; i < 10000; i++ {
 }
 ```
 
-results in **10,000 separate system calls**, greatly increasing overhead and slowing down your application. Additionally, repeated small writes fragment disk operations, placing unnecessary strain on system resources.
+This can easily result in **10,000 separate system calls**, each carrying its own overhead and dragging down performance. On top of that, a flood of small writes tends to fragment disk operations, which puts extra pressure on I/O subsystems and wastes CPU cycles handling what could have been a single, efficient batch.
 
 ### With Buffering
 
@@ -52,7 +52,7 @@ Similar logic applies when reading data:
 reader := bufio.NewReaderSize(f, 32*1024) // 32 KB buffer for input
 ```
 
-Choosing buffer sizes should always be guided by profiling and empirical performance testing. Factors like disk type (SSD vs. HDD), file system configurations, CPU cache sizes, and overall system load can influence optimal buffer sizing.
+Buffer size isn’t something to guess at—it’s something to measure. The ideal size depends on too many variables to hard-code: whether you’re writing to SSDs or spinning disks, how your filesystem buffers writes, how much CPU cache is available, and what else is competing for resources on the system. Profiling and benchmarking are the only reliable ways to dial it in. What works well on one setup might be suboptimal—or even harmful—on another.
 
 ## Benchmarking Impact
 

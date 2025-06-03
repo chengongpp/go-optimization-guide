@@ -1,6 +1,6 @@
 # Immutable Data Sharing
 
-One common bottleneck when building high-performance Go applications is concurrent access to shared data. The traditional approach often involves mutexes or channels to manage synchronization. While effective, these tools can add complexity and subtle bugs if not used carefully.
+One common source of slowdown in high-performance Go programs is the way shared data is accessed under concurrency. The usual tools—mutexes and channels—work well, but they’re not free. Mutexes can become choke points if many goroutines try to grab the same lock. Channels, while elegant for coordination, can introduce blocking and make control flow harder to reason about. Both require careful use: it’s easy to introduce subtle bugs or unexpected performance issues if synchronization isn’t tight.
 
 A powerful alternative is immutable data sharing. Instead of protecting data with locks, you design your system so that shared data is never mutated after it's created. This minimizes contention and simplifies reasoning about your program.
 
@@ -138,9 +138,9 @@ Now, your routing logic can scale safely under load with zero locking overhead.
 
 ## Scaling Immutable Routing Tables
 
-As your system grows, the routing table might contain hundreds or even thousands of rules. Rebuilding and copying the entire structure every minor change might no longer be practical.
+As systems grow, routing tables can expand to hundreds or even thousands of entries. While immutability brings clear benefits—safe concurrent access, predictable behavior—it becomes costly if every update means copying the entire structure. At some point, rebuilding the whole table for each minor change doesn’t scale.
 
-Let’s consider a few ways to evolve this design while keeping the benefits of immutability.
+To keep immutability without paying for full reconstruction on every update, the design needs to evolve. There are several ways to do this—each preserving the core benefits while reducing overhead.
 
 ### Scenario 1: Segmented Routing
 Imagine a multi-tenant system where each customer has their own set of routing rules. Instead of one giant slice of routes, you can split them into a map:

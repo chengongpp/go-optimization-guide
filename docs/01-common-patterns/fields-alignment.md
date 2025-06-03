@@ -1,10 +1,10 @@
 # Struct Field Alignment
 
-When optimizing Go programs for performance, struct layout and memory alignment often go unnoticed—yet they have a measurable impact on memory usage and cache efficiency. Go automatically aligns struct fields based on platform-specific rules, inserting padding to satisfy alignment constraints. Understanding and controlling this alignment can reduce memory footprint, improve cache locality, and improve performance in tight loops or high-throughput data pipelines.
+When optimizing Go programs for performance, struct layout and memory alignment often go unnoticed—yet they have a measurable impact on memory usage and cache efficiency. Go automatically aligns struct fields based on platform-specific rules, inserting padding to satisfy alignment constraints. Understanding and controlling memory alignment isn’t just a low-level detail—it can have a real impact on how your Go programs perform, especially in tight loops or high-throughput systems. Proper alignment can reduce the overall memory footprint, make better use of CPU caches, and eliminate subtle performance penalties that add up under load.
 
 ## Why Alignment Matters
 
-Modern CPUs are sensitive to memory layout. When data is misaligned or spans multiple cache lines, it incurs additional access cycles and can disrupt performance. In Go, struct fields are aligned according to their type requirements, and the compiler inserts padding bytes to meet these constraints. If fields are arranged without care, unnecessary padding may inflate struct size significantly, affecting memory use and bandwidth.
+Modern CPUs are tuned for predictable memory access. When struct fields are misaligned or split across cache lines, the processor often has to do extra work to fetch the data. That can mean additional memory cycles, more cache misses, and slower performance overall. These costs are easy to overlook in everyday code but show up quickly in code that’s sensitive to throughput or latency. In Go, struct fields are aligned according to their type requirements, and the compiler inserts padding bytes to meet these constraints. If fields are arranged without care, unnecessary padding may inflate struct size significantly, affecting memory use and bandwidth.
 
 Consider the following two structs:
 
@@ -37,7 +37,7 @@ Benchmark Results
 | PoorlyAligned-14       | 177        | 20,095,621  | 240,001,029 | 1          |
 | WellAligned-14         | 186        | 19,265,714  | 160,006,148 | 1          |
 
-The WellAligned version reduced memory usage by 80MB for 10 million structs and also ran slightly faster than the poorly aligned version. This highlights that thoughtful field arrangement improves memory efficiency and can yield modest performance gains in allocation-heavy code paths.
+In a test with 10 million structs, the `WellAligned` version used 80MB less memory than its poorly aligned counterpart—and it also ran a bit faster. This isn’t just about saving RAM; it shows how struct layout directly affects allocation behavior and memory bandwidth. When you’re working with large volumes of data or performance-critical paths, reordering fields for better alignment can lead to measurable gains with minimal effort.
 
 ## Avoiding False Sharing in Concurrent Workloads
 
@@ -89,8 +89,8 @@ Placing padding between the two fields prevented false sharing, resulting in a m
 
 Guidelines for struct alignment:
 
-- Order fields by decreasing size to reduce internal padding. Larger fields first help prevent unnecessary gaps caused by alignment rules.
-- Group same-sized fields together to optimize memory layout. This ensures fields can be packed tightly without additional padding.
-- Use padding deliberately to separate fields accessed by different goroutines. Preventing false sharing can improve performance in concurrent applications.
+- Order fields from largest to smallest. Starting with larger fields helps the compiler avoid inserting padding to meet alignment requirements. Smaller fields can fill in the gaps naturally.
+- Group fields of the same size together. This lets the compiler pack them more efficiently and minimizes wasted space.
+- Insert padding intentionally when needed. In concurrent code, separating fields that are accessed by different goroutines can prevent false sharing—a subtle but costly issue where multiple goroutines compete over the same cache line.
 - Avoid interleaving small and large fields. Mixing sizes leads to inefficient memory usage due to extra alignment padding between fields.
 - Use the [fieldalignment](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/fieldalignment) linter to verify. This tool helps catch suboptimal layouts automatically during development.
