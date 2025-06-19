@@ -43,7 +43,7 @@ func processData() {
 }
 ```
 
-Here, ] provides a concise way to wrap one-time initialization logic and access the result without managing flags or mutexes manually. It simplifies lazy loading by directly returning the computed value on demand.
+Here, `sync.OnceValue` provides a concise way to wrap one-time initialization logic and access the result without managing flags or mutexes manually. It simplifies lazy loading by directly returning the computed value on demand.
 
 For cases where the initializer returns more than one value—such as a resource and an error—`sync.OnceValues` extends the same idea. It ensures the function runs exactly once and cleanly unpacks the results, keeping the code readable and thread-safe without boilerplate.
 
