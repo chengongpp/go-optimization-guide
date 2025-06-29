@@ -100,6 +100,64 @@ However, in practice, connection migration depends on the specific implementatio
 * **NAT rebinding works:** If a client's IP or port changes due to NAT behavior or DHCP renewal, and the same connection ID is used, quic-go will continue the session without requiring a new connection. This is passive migration and requires no explicit action from the client.
 * **Interface switching (active migration) is not supported:** Switching network interfaces—such as moving from Wi-Fi to LTE—requires sending packets from a new path and validating it with PATH_CHALLENGE and PATH_RESPONSE frames. The protocol defines this behavior, but quic-go does not implement it.
 
+
+## Resilience in Practice
+
+QUIC is particularly effective in networks where reliability is difficult to guarantee—mobile clients on LTE, IoT nodes on lossy links, or any edge system moving between access points. Rather than relying on techniques like forward error correction (dropped during IETF standardization), QUIC builds resilience into the core transport through a combination of stream isolation, fine-grained recovery, and flexible routing.
+
+QUIC connections are multiplexed: each stream runs independently with a separate flow control and delivery state. Packet loss on one stream doesn’t interfere with others, avoiding the head-of-line blocking inherent in TCP. This alone gives QUIC a noticeable advantage in throughput on degraded links.
+
+Loss recovery in QUIC is driven by packet-level acknowledgments and RTT-based timers—no reliance on TCP-style retransmission logic. Lost packets are detected faster, and retransmissions are scoped to the specific frames involved.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Server
+
+    Note over Client, Server: RTT = 100ms
+
+    Client->>Server: Packet #1 (STREAM)
+    Client->>Server: Packet #2 (STREAM)
+    Client--xServer: Packet #3 (lost)
+    Client->>Server: Packet #4 (STREAM)
+
+    Note over Server: Server receives #1, #2, #4 (but not #3)
+
+    Server-->>Client: ACK [1-2, 4] after 100ms
+
+    Note over Client: Missing #3 is inferred lost\nonce #4 is ACKed before it
+
+    Client->>Server: Packet #5 (Retransmit lost frame from #3)
+    Server-->>Client: ACK [5]
+```
+
+### How QUIC ACKs Differ from TCP
+
+While TCP includes support for SACK (Selective Acknowledgment), there are critical distinctions that make QUIC’s loss recovery more robust and deterministic:
+
+* **SACK in TCP is optional** and negotiated during handshake. QUIC’s ACK ranges are always enabled and part of the core protocol.
+* **TCP acknowledges bytes**, while QUIC acknowledges whole packets by number.
+* **Retransmissions in TCP** are often byte-specific and tied to stream position. In QUIC, entire packets are retransmitted.
+* **QUIC ACKs are encrypted**, making them tamper-resistant and resilient to on-path interference.
+
+| Feature                    | TCP                    | QUIC                    |
+| -------------------------- | ---------------------- | ----------------------- |
+| ACK granularity            | Byte-level             | Packet-level            |
+| ACK range support          | Optional (via SACK)    | Mandatory               |
+| Loss detection             | Duplicate ACKs, timers | Gaps + RTT-based timers |
+| Retransmission granularity | Partial stream bytes   | Full packet             |
+| Encryption of ACKs         | No                     | Yes                     |
+
+### Connection Migration and Middlebox Resilience
+
+When a device moves between networks (e.g., Wi-Fi to LTE), QUIC's use of connection IDs allows it to maintain continuity. Connections aren't bound to IP-port pairs and don’t require a full reconnect. Although `quic-go` doesn’t yet support active migration, passive rebinding already works in practice.
+
+Because QUIC encrypts its transport metadata, it’s also more robust against middlebox interference. Encrypted packet numbers, ACKs, and control frames reduce the risk of unintended behavior by on-path devices, which can degrade TCP performance.
+
+### Congestion Control Flexibility
+
+Finally, QUIC enables pluggable congestion control. The protocol doesn’t prescribe one algorithm—BBR, Cubic, and custom logic are all possible at the application layer. This allows fine-tuning behavior for different latency and throughput tradeoffs.
+
 ## 0-RTT Connections
 
 QUIC supports 0-RTT handshakes, allowing clients to send application data during the initial handshake on repeat connections. This reduces startup latency significantly. However, because 0-RTT data can be replayed by an attacker, it must be used carefully—typically limited to idempotent operations and trusted clients.
