@@ -62,7 +62,7 @@ A 15-part guide to building scalable, efficient, and resilient networked applica
 
 ## Low-Level and Advanced Tuning
 
-- Low-Level Network Optimizations: Socket Options That Matter
+- [Low-Level Network Optimizations: Socket Options That Matter](low-level-optimizations.md)
 
 	Explore advanced socket-level tuning options like disabling Nagle’s algorithm (`TCP_NODELAY`), adjusting `SO_REUSEPORT`, `SO_RCVBUF`/`SO_SNDBUF`, TCP keepalives, and connection backlog (`SOMAXCONN`). Explain how Go exposes these via `syscall` and how to wrap them safely. Real-world examples included for latency-sensitive systems and high-throughput services.
 

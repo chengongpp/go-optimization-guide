@@ -94,6 +94,8 @@ nav:
     - Transport-Level Optimization:
       - Comparing TCP, HTTP/2, and gRPC Performance in Go: 02-networking/tcp-http2-grpc.md
       - QUIC – Building Low-Latency Services with quic-go: 02-networking/quic-in-go.md
+    - Low-Level and Advanced Tuning:
+      - Socket Options That Matter: 02-networking/low-level-optimizations.md
 
 markdown_extensions:
   - toc:
