@@ -96,6 +96,7 @@ nav:
       - QUIC – Building Low-Latency Services with quic-go: 02-networking/quic-in-go.md
     - Low-Level and Advanced Tuning:
       - Socket Options That Matter: 02-networking/low-level-optimizations.md
+      - Tuning DNS Performance in Go Services: 02-networking/dns_performance.md
 
 markdown_extensions:
   - toc:

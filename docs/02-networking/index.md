@@ -66,7 +66,7 @@ A 15-part guide to building scalable, efficient, and resilient networked applica
 
 	Explore advanced socket-level tuning options like disabling Nagle’s algorithm (`TCP_NODELAY`), adjusting `SO_REUSEPORT`, `SO_RCVBUF`/`SO_SNDBUF`, TCP keepalives, and connection backlog (`SOMAXCONN`). Explain how Go exposes these via `syscall` and how to wrap them safely. Real-world examples included for latency-sensitive systems and high-throughput services.
 
-- Tuning DNS Performance in Go Services
+- [Tuning DNS Performance in Go Services](dns_performance.md)
 
 	DNS lookups are often overlooked as latency culprits. Learn how Go performs name resolution (cgo vs Go resolver), when to cache results, and how to use custom dialers or pre-resolved IPs to avoid flaky network paths. Includes metrics and debugging tips for real-world DNS slowdowns.
 
