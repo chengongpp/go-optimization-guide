@@ -29,9 +29,8 @@ Topics include:
 
 - Getting the most out of `net/http` and `net.Conn`
 - Handling large numbers of concurrent connections without falling over
-- Tuning for system-level performance with `epoll`, kque`ue, and `GOMAXPROCS`
+- Tuning for system-level performance with `epoll`, kqueue, and `GOMAXPROCS`
 - Running realistic load tests and tracking down bottlenecks
-- More coming soon…
 
 While the goal is to keep everything grounded in practical examples, this part leans more theoretical for now due to the exploratory nature of the networking topics being developed.
 

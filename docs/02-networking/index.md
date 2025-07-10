@@ -70,7 +70,7 @@ A 15-part guide to building scalable, efficient, and resilient networked applica
 
 	DNS lookups are often overlooked as latency culprits. Learn how Go performs name resolution (cgo vs Go resolver), when to cache results, and how to use custom dialers or pre-resolved IPs to avoid flaky network paths. Includes metrics and debugging tips for real-world DNS slowdowns.
 
-- Optimizing TLS for Speed: Handshake, Reuse, and Cipher Choice
+- [Optimizing TLS for Speed: Handshake, Reuse, and Cipher Choice](tls-for-speed.md)
 
 	TLS adds security—but it can also add overhead. Tune your Go service for fast and secure TLS: enable session resumption, choose fast cipher suites, use ALPN negotiation wisely, and minimize cert verification cost. Examples included with `tls.Config` best practices.
 

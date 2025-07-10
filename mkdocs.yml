@@ -97,6 +97,7 @@ nav:
     - Low-Level and Advanced Tuning:
       - Socket Options That Matter: 02-networking/low-level-optimizations.md
       - Tuning DNS Performance in Go Services: 02-networking/dns_performance.md
+      - Optimizing TLS for Speed: 02-networking/tls-for-speed.md
 
 markdown_extensions:
   - toc:
