@@ -74,14 +74,6 @@ A 15-part guide to building scalable, efficient, and resilient networked applica
 
 	TLS adds security—but it can also add overhead. Tune your Go service for fast and secure TLS: enable session resumption, choose fast cipher suites, use ALPN negotiation wisely, and minimize cert verification cost. Examples included with `tls.Config` best practices.
 
-- Connection Lifecycle Observability: From Dial to Close
+- [Connection Lifecycle Observability: From Dial to Close](connection_observability.md)
 
 	Trace the full lifecycle of a connection with visibility at each stage—DNS, dial, handshake, negotiation, reads/writes, and teardown. Learn how to log connection spans, trace hangs, correlate errors with performance metrics, and build custom observability into network flows.
-
----
-
-## Final Tuning and Deployment
-
-- Tuning Go Networking for Production: Final Checklist
-
-	Wrap up the series with a practical checklist covering everything you’ve learned—timeouts, buffer sizes, socket flags, transport choices, instrumentation, runtime settings, and benchmarks. Designed as a pre-launch or scale-up checklist for real-world Go backend teams.

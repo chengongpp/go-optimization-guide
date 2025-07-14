@@ -27,10 +27,12 @@ This section takes a focused look at what it takes to build fast, reliable netwo
 
 Topics include:
 
-- Getting the most out of `net/http` and `net.Conn`
-- Handling large numbers of concurrent connections without falling over
-- Tuning for system-level performance with `epoll`, kqueue, and `GOMAXPROCS`
-- Running realistic load tests and tracking down bottlenecks
+- Efficient use of `net/http`, `net.Conn`, and connection pooling
+- Serving thousands of concurrent connections without collapsing
+- Tuning Go’s scheduler and system-level settings (GOMAXPROCS, epoll, kqueue)
+- Building resilient services with load shedding and backpressure
+- Preventing memory leaks in long-lived connections
+- Choosing and tuning transport protocols: TCP, HTTP/2, gRPC, QUIC
 
 While the goal is to keep everything grounded in practical examples, this part leans more theoretical for now due to the exploratory nature of the networking topics being developed.
 
