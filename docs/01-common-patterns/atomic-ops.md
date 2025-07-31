@@ -83,19 +83,46 @@ This pattern allows one goroutine to signal another to stop. `atomic.LoadInt32` 
 
 #### Once-Only Initialization
 
-Replace `sync.Once` when you need more control:
+For scenarios where `sync.Once` isn’t flexible enough—such as needing retryable or restartable initialization – a more precise control can be achieved using atomic operations:
 
 ```go
-var initialized atomic.Int32
+import (
+    "runtime"
+    "sync/atomic"
+    "unsafe"
+)
 
-func maybeInit() {
-    if initialized.CompareAndSwap(0, 1) {
-        // initialize resources
+var resource unsafe.Pointer
+var initStatus int32 // 0: not started, 1: in progress, 2: completed
+
+func getResource() *MyResource {
+    if atomic.LoadInt32(&initStatus) == 2 {
+        return (*MyResource)(atomic.LoadPointer(&resource))
     }
+
+    if atomic.CompareAndSwapInt32(&initStatus, 0, 1) {
+        newRes := expensiveInit() // initialization logic
+        atomic.StorePointer(&resource, unsafe.Pointer(newRes))
+        atomic.StoreInt32(&initStatus, 2)
+        return newRes
+    }
+
+    for atomic.LoadInt32(&initStatus) != 2 {
+        runtime.Gosched() // yield until the initializer finishes
+    }
+    return (*MyResource)(atomic.LoadPointer(&resource))
 }
 ```
 
-This uses `CompareAndSwapInt32` to ensure only the first goroutine that sees `initialized == 0` will perform the initialization logic. All others skip it. It's efficient and avoids the lock overhead of `sync.Once`, especially when you need conditional or retryable behavior.
+This pattern uses an explicit three-state protocol:
+
+* `0` = uninitialized
+* `1` = initialization in progress
+* `2` = initialized
+
+The first goroutine that successfully flips the state from `0` to `1` takes charge of the initialization. The rest wait in a lightweight spin loop, briefly yielding with `runtime.Gosched()` until initialization completes. Once the state flips to `2`, they read the resource and continue.
+
+Unlike `sync.Once`, this approach avoids mutex overhead and gives you full control over how and when initialization happens. It’s well-suited for high-performance paths or systems where partial or retryable initialization is necessary.
 
 #### Lock-Free Queues or Freelist Structures
 

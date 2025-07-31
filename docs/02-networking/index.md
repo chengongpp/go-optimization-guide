@@ -1,6 +1,6 @@
 # Practical Networking Patterns in Go
 
-A 15-part guide to building scalable, efficient, and resilient networked applications in Go—grounded in real-world benchmarks, low-level optimizations, and practical design patterns.
+A 13-part guide to building scalable, efficient, and resilient networked applications in Go—grounded in real-world benchmarks, low-level optimizations, and practical design patterns.
 
 ---
 
