@@ -3,6 +3,7 @@ date:
   created: 2025-04-03
 categories:
   - atomics
+  - optimizations
 ---
 # Lazy initialization in Go using atomics
 
