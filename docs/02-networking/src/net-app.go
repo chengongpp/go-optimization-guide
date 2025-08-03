@@ -41,7 +41,7 @@ func slowHandler(w http.ResponseWriter, r *http.Request) {
 	delayRange := int((*slowMax - *slowMin) / time.Millisecond)
 	delay := time.Duration(randRange(1, delayRange)) * time.Millisecond
 	time.Sleep(delay)
-	fmt.Fprintf(w, "slow response with delay %d ms\n", delay)
+	fmt.Fprintf(w, "slow response with delay %d ms\n", delay.Milliseconds())
 }
 
 // heavy-start
